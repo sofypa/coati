@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Coatí - Visualizador 3D</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  #ui {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    z-index: 999;
+    max-width: 400px;
+  }
+
+  button {
+    padding: 10px 14px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    background: white;
+    border: 2px solid #333;
+    border-radius: 4px;
+    font-size: 14px;
+    touch-action: manipulation;
+  }
+
+  button:hover {
+    background: #f0f0f0;
+  }
+
+  button.active {
+    background: #4CAF50;
+    color: white;
+  }
+
+  #panel {
+    margin-top: 10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  #panel h3 {
+    margin-top: 0;
+    color: #4CAF50;
+    font-size: 18px;
+  }
+
+  #instrucciones {
+    margin-top: 10px;
+    font-size: 11px;
+    color: #ccc;
+    line-height: 1.4;
+  }
+
+  #audioPanel {
+    margin-top: 10px;
+    background: rgba(0,0,0,0.9);
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    display: none;
+  }
+
+  #audioPanel h4 {
+    margin: 0 0 10px 0;
+    color: #4CAF50;
+    font-size: 16px;
+  }
+
+  .audio-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .audio-controls button {
+    flex: 1;
+    padding: 10px;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  #progressContainer {
+    width: 100%;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    margin: 10px 0;
+    cursor: pointer;
+    position: relative;
+    touch-action: none;
+  }
+
+  #progressBar {
+    height: 100%;
+    background: #4CAF50;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.1s;
+  }
+
+  #timeDisplay {
+    font-size: 13px;
+    color: #ccc;
+    text-align: center;
+  }
+
+  .info-buttons {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .info-buttons button {
+    flex: 1 1 calc(50% - 5px);
+    font-size: 12px;
+    padding: 8px 10px;
+    margin: 0;
+  }
+
+  #infoContent {
+    margin-top: 10px;
+    padding: 12px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 5px;
+    font-size: 14px;
+    line-height: 1.5;
+    max-height: 250px;
+    overflow-y: auto;
+  }
+
+  #infoContent h4 {
+    margin: 0 0 8px 0;
+    color: #FFD700;
+    font-size: 15px;
+  }
+
+  #infoContent::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  #infoContent::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+  }
+
+  #infoContent::-webkit-scrollbar-thumb {
+    background: #4CAF50;
+    border-radius: 4px;
+  }
+
+  #panel::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  #panel::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.3);
+    border-radius: 4px;
+  }
+
+  #panel::-webkit-scrollbar-thumb {
+    background: #4CAF50;
+    border-radius: 4px;
+  }
+
+  #animalTitle {
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  /* Estilos responsivos para móviles */
+  @media (max-width: 768px) {
+    #ui {
+      max-width: calc(100% - 20px);
+    }
+
+    button {
+      font-size: 13px;
+      padding: 9px 12px;
+    }
+
+    #panel h3 {
+      font-size: 16px;
+    }
+
+    #infoContent {
+      font-size: 13px;
+      max-height: 200px;
+    }
+
+    .info-buttons button {
+      font-size: 11px;
+      padding: 7px 8px;
+    }
+
+    #instrucciones {
+      font-size: 10px;
+    }
+  }
+</style>
+
+</head>
+
+<body>
+
+<a-scene cursor="rayOrigin: mouse">
+
+  <!-- Fondo -->
+  <a-assets>
+    <img id="hdr" src="fondoblur.jpg">
+    
+    <!-- Sonido del coatí -->
+    <audio id="sound-coati" src="sounds/coati.mp3" preload="auto"></audio>
+  </a-assets>
+  <a-sky src="#hdr"></a-sky>
+
+  <!-- Luces -->
+  <a-light type="ambient" intensity="0.6"></a-light>
+  <a-light type="directional" intensity="1" position="2 4 2"></a-light>
+
+  <!-- Modelo del Coatí (FIJO) -->
+  <a-entity
+    id="modelo"
+    gltf-model="models/coati.glb"
+    position="0 0 0"
+    scale="5 5 5"
+    rotation="0 0 0">
+  </a-entity>
+
+  <!-- Modelo (SUELO) -->
+  <a-entity
+    gltf-model="models/ground.glb"
+    position="0 -1.8 0"
+    scale="3 3 3"
+    rotation="0 0 0">
+  </a-entity>
+
+  <!-- RIG DE CÁMARA -->
+  <a-entity id="cameraRig" rotation="0 0 0">
+    <a-camera
+      position="0 0.5 4"
+      look-at="#modelo"
+      look-controls="enabled: false"
+      wasd-controls="enabled: true">
+    </a-camera>
+  </a-entity>
+
+</a-scene>
+
+<script>
+  // Control de rotación con mouse y touch
+  window.addEventListener('DOMContentLoaded', () => {
+    const rig = document.querySelector('#cameraRig');
+
+    if (!rig) {
+      console.error('cameraRig no encontrado');
+      return;
+    }
+
+    let dragging = false;
+    let lastX = 0;
+    let rotationY = 0;
+
+    // Eventos de mouse
+    window.addEventListener('mousedown', e => {
+      if (e.target.closest('#ui')) return; // Ignorar clics en UI
+      dragging = true;
+      lastX = e.clientX;
+    });
+
+    window.addEventListener('mouseup', () => dragging = false);
+
+    window.addEventListener('mousemove', e => {
+      if (!dragging) return;
+
+      const delta = e.clientX - lastX;
+      lastX = e.clientX;
+
+      rotationY += delta * 0.3;
+      rig.setAttribute('rotation', `0 ${rotationY} 0`);
+    });
+
+    // Eventos táctiles para móviles
+    window.addEventListener('touchstart', e => {
+      if (e.target.closest('#ui')) return; // Ignorar toques en UI
+      dragging = true;
+      lastX = e.touches[0].clientX;
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => dragging = false);
+
+    window.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      
+      const delta = e.touches[0].clientX - lastX;
+      lastX = e.touches[0].clientX;
+
+      rotationY += delta * 0.3;
+      rig.setAttribute('rotation', `0 ${rotationY} 0`);
+    }, { passive: true });
+  });
+</script>
+
+<script>
+  // Control de zoom con rueda del mouse y pinch en móviles
+  window.addEventListener('DOMContentLoaded', () => {
+    const camera = document.querySelector('a-camera');
+    let zoom = 4;
+    const cameraY = 0.5;
+
+    // Zoom con rueda del mouse
+    window.addEventListener('wheel', e => {
+      if (e.target.closest('#ui')) return; // Ignorar scroll en UI
+      zoom += e.deltaY * 0.01;
+      zoom = Math.min(Math.max(zoom, 2), 12);
+
+      camera.setAttribute('position', `0 ${cameraY} ${zoom}`);
+    });
+
+    // Zoom con pinch en móviles
+    let lastDistance = 0;
+    
+    window.addEventListener('touchstart', e => {
+      if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        lastDistance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+      }
+    }, { passive: true });
+
+    window.addEventListener('touchmove', e => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.hypot(
+          touch2.clientX - touch1.clientX,
+          touch2.clientY - touch1.clientY
+        );
+
+        const delta = lastDistance - distance;
+        zoom += delta * 0.01;
+        zoom = Math.min(Math.max(zoom, 2), 12);
+
+        camera.setAttribute('position', `0 ${cameraY} ${zoom}`);
+        lastDistance = distance;
+      }
+    }, { passive: false });
+  });
+</script>
+
+<script>
+  // Información del Coatí
+  const animal = {
+    nombre: "Coatí",
+    descripcion: "El coatí o gato solo es un mamífero diurno de color marrón y hocico alargado. Vive en grupos sociales de hasta 30 individuos, integrados principalmente por hembras, crías y machos juveniles.",
+    habitat: "Su distribución abarca desde el suroeste de Estados Unidos hasta el norte de Argentina, incluyendo México, Centroamérica y Panamá. Generalmente se les encuentra en hábitats boscosos como bosques templados, selvas tropicales de tierras bajas y bosques nubosos.",
+    alimentacion: "Son omnívoros. Su alimento predilecto son los insectos. Para hallarlos usan su desarrollado olfato que les permite olerlos debajo de la tierra.",
+    conservacion: "Es una especie amenazada, debido a que las especies adultas son cazadas por cazadores de subsistencia, o cazadores-recolectores, para alimentarse por lo que muchas veces las crías quedan sobreviviendo solas.",
+  };
+
+  let infoActiva = null;
+
+  // Función para mostrar información del animal
+  function mostrarAnimal() {
+    document.getElementById('titulo').textContent = animal.nombre;
+    document.getElementById('descripcion').textContent = animal.descripcion;
+    
+    // Si había info adicional visible, actualizarla
+    if (infoActiva) {
+      mostrarInfo(infoActiva);
+    } else {
+      document.getElementById('infoContent').style.display = 'none';
+    }
+  }
+
+  // Función para mostrar información adicional
+  function mostrarInfo(tipo) {
+    const infoContent = document.getElementById('infoContent');
+    
+    let titulo = '';
+    let contenido = '';
+    
+    if (infoActiva === tipo) {
+      // Si se clickea el mismo botón, ocultar
+      infoActiva = null;
+      infoContent.style.display = 'none';
+      actualizarBotonesInfo();
+      return;
+    }
+    
+    switch(tipo) {
+      case 'habitat':
+        titulo = '🌍 Hábitat';
+        contenido = animal.habitat;
+        break;
+      case 'alimentacion':
+        titulo = '🍃 Alimentación';
+        contenido = animal.alimentacion;
+        break;
+      case 'conservacion':
+        titulo = '🛡️ Estado de Conservación';
+        contenido = animal.conservacion;
+        break;
+    }
+    
+    infoContent.innerHTML = `<h4>${titulo}</h4><p>${contenido}</p>`;
+    infoContent.style.display = 'block';
+    infoActiva = tipo;
+    actualizarBotonesInfo();
+  }
+
+  // Actualizar botones de información
+  function actualizarBotonesInfo() {
+    const botonesInfo = document.querySelectorAll('.info-buttons button');
+    botonesInfo.forEach(btn => {
+      const tipo = btn.getAttribute('data-info');
+      if (tipo === infoActiva) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  // Función para mostrar/ocultar panel
+  function togglePanel() {
+    const panel = document.getElementById('panel');
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  // Función para reproducir sonido
+  let audioActual = null;
+  let isPlaying = false;
+
+  function reproducirSonido() {
+    const sound = document.querySelector('#sound-coati');
+    
+    if (sound) {
+      audioActual = sound;
+      audioActual.play().catch(err => {
+        console.log('Error al reproducir sonido:', err);
+      });
+      
+      isPlaying = true;
+      mostrarPanelAudio();
+      actualizarBotonPlay();
+    }
+  }
+
+  function mostrarPanelAudio() {
+    const panel = document.getElementById('audioPanel');
+    document.getElementById('audioTitle').textContent = `🔊 ${animal.nombre}`;
+    panel.style.display = 'block';
+  }
+
+  function ocultarPanelAudio() {
+    document.getElementById('audioPanel').style.display = 'none';
+    if (audioActual) {
+      audioActual.pause();
+      audioActual.currentTime = 0;
+      isPlaying = false;
+      actualizarBotonPlay();
+    }
+  }
+
+  function togglePlayPause() {
+    if (!audioActual) return;
+    
+    if (isPlaying) {
+      audioActual.pause();
+      isPlaying = false;
+    } else {
+      audioActual.play();
+      isPlaying = true;
+    }
+    actualizarBotonPlay();
+  }
+
+  function rebobinarAudio() {
+    if (!audioActual) return;
+    audioActual.currentTime = Math.max(0, audioActual.currentTime - 5);
+  }
+
+  function actualizarBotonPlay() {
+    const btn = document.getElementById('playPauseBtn');
+    if (btn) {
+      btn.textContent = isPlaying ? '⏸️ Pausar' : '▶️ Reproducir';
+    }
+  }
+
+  function formatTime(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }
+
+  // Actualizar barra de progreso
+  setInterval(() => {
+    if (audioActual && isPlaying) {
+      const progress = (audioActual.currentTime / audioActual.duration) * 100;
+      document.getElementById('progressBar').style.width = progress + '%';
+      
+      const currentTime = formatTime(audioActual.currentTime);
+      const duration = formatTime(audioActual.duration || 0);
+      document.getElementById('timeDisplay').textContent = `${currentTime} / ${duration}`;
+      
+      // Si terminó el audio
+      if (audioActual.currentTime >= audioActual.duration) {
+        isPlaying = false;
+        actualizarBotonPlay();
+      }
+    }
+  }, 100);
+
+  // Click en barra de progreso para saltar (mouse y touch)
+  function clickProgress(e) {
+    if (!audioActual) return;
+    
+    const container = document.getElementById('progressContainer');
+    const rect = container.getBoundingClientRect();
+    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+    const percent = (clientX - rect.left) / rect.width;
+    audioActual.currentTime = percent * audioActual.duration;
+  }
+
+  // Soporte táctil para la barra de progreso
+  document.addEventListener('DOMContentLoaded', () => {
+    const progressContainer = document.getElementById('progressContainer');
+    
+    progressContainer.addEventListener('touchstart', e => {
+      e.preventDefault();
+      clickProgress(e);
+    }, { passive: false });
+
+    progressContainer.addEventListener('touchmove', e => {
+      e.preventDefault();
+      clickProgress(e);
+    }, { passive: false });
+    
+    // Inicializar información
+    mostrarAnimal();
+  });
+</script>
+
+<div id="ui">
+  <div id="animalTitle">Coatí</div>
+
+  <button onclick="togglePanel()">ℹ️ Información</button>
+  <button onclick="reproducirSonido()">🔊 Sonido</button>
+
+  <div id="panel" style="display: none;">
+    <h3 id="titulo"></h3>
+    <p id="descripcion"></p>
+    
+    <div class="info-buttons">
+      <button data-info="habitat" onclick="mostrarInfo('habitat')">🌍 Hábitat</button>
+      <button data-info="alimentacion" onclick="mostrarInfo('alimentacion')">🍃 Alimentación</button>
+      <button data-info="conservacion" onclick="mostrarInfo('conservacion')">🛡️ Conservación</button>
+    </div>
+    
+    <div id="infoContent" style="display: none;"></div>
+    
+    <div id="instrucciones">
+      <strong>PC:</strong> WASD: Mover | Arrastrar: Rotar | Rueda: Zoom<br>
+      <strong>Móvil:</strong> Deslizar: Rotar | Pinch: Zoom
+    </div>
+  </div>
+
+  <div id="audioPanel">
+    <h4 id="audioTitle">🔊 Audio</h4>
+    
+    <div class="audio-controls">
+      <button onclick="rebobinarAudio()">⏪ -5s</button>
+      <button id="playPauseBtn" onclick="togglePlayPause()">⏸️ Pausar</button>
+      <button onclick="ocultarPanelAudio()">❌ Cerrar</button>
+    </div>
+    
+    <div id="progressContainer" onclick="clickProgress(event)">
+      <div id="progressBar"></div>
+    </div>
+    
+    <div id="timeDisplay">0:00 / 0:00</div>
+  </div>
+</div>
+
+</body>
+</html>
