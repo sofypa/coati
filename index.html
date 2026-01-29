@@ -2,8 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Coatí - Visualizador 3D</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>C - Visualizador 3D</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.min.js"></script>
 
 <style>
   body {
@@ -41,6 +43,16 @@
   button.active {
     background: #4CAF50;
     color: white;
+  }
+
+  button.ar-button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+  }
+
+  button.ar-button:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
   }
 
   #panel {
@@ -189,7 +201,112 @@
     font-size: 14px;
   }
 
-  /* Estilos responsivos para móviles */
+  #arModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  #arModal.show {
+    display: flex;
+  }
+
+  .modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 450px;
+    text-align: center;
+  }
+
+  .modal-content h2 {
+    color: #667eea;
+    margin-top: 0;
+  }
+
+  .modal-content p {
+    color: #333;
+    line-height: 1.6;
+  }
+
+  .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .modal-buttons button {
+    flex: 1;
+    padding: 12px;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .btn-cancel {
+    background: #ccc;
+  }
+
+  .btn-confirm {
+    background: #667eea;
+    color: white;
+    border: none;
+  }
+
+  #arInstructions {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.85);
+    color: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    text-align: center;
+    max-width: 90%;
+    backdrop-filter: blur(10px);
+    z-index: 998;
+    display: none;
+  }
+
+  .ar-badge {
+    background: rgba(255, 152, 0, 0.9);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 5px;
+  }
+
+  #surfaceIndicator {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100px;
+    height: 100px;
+    border: 3px dashed #4CAF50;
+    border-radius: 50%;
+    background: rgba(76, 175, 80, 0.2);
+    display: none;
+    z-index: 997;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+    50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.5; }
+  }
+
   @media (max-width: 768px) {
     #ui {
       max-width: calc(100% - 20px);
@@ -217,6 +334,21 @@
     #instrucciones {
       font-size: 10px;
     }
+
+    .modal-content {
+      margin: 20px;
+      padding: 20px;
+    }
+  }
+
+  body.ar-mode #ui {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  body.ar-mode #arInstructions {
+    display: block;
   }
 </style>
 
@@ -224,22 +356,35 @@
 
 <body>
 
-<a-scene cursor="rayOrigin: mouse">
+<!-- Indicador de superficie -->
+<div id="surfaceIndicator"></div>
 
-  <!-- Fondo -->
+<!-- ESCENA -->
+<a-scene 
+  id="normalScene" 
+  webxr="requiredFeatures: hit-test,local-floor; optionalFeatures: dom-overlay,unbounded; overlayElement: #ui;"
+  renderer="colorManagement: true; physicallyCorrectLights: true;">
+  
   <a-assets>
     <img id="hdr" src="fondoblur.jpg">
-    
-    <!-- Sonido del coatí -->
     <audio id="sound-coati" src="sounds/coati.mp3" preload="auto"></audio>
   </a-assets>
+  
   <a-sky src="#hdr"></a-sky>
 
-  <!-- Luces -->
-  <a-light type="ambient" intensity="0.6"></a-light>
-  <a-light type="directional" intensity="1" position="2 4 2"></a-light>
+  <a-light type="ambient" intensity="1.5"></a-light>
+  <a-light type="directional" intensity="1.8" position="2 4 2"></a-light>
 
-  <!-- Modelo del Coatí (FIJO) -->
+  <!-- Reticle para AR (invisible en modo normal) -->
+  <a-entity
+    id="reticle"
+    geometry="primitive: ring; radiusInner: 0.08; radiusOuter: 0.1"
+    material="color: #4CAF50; shader: flat; opacity: 0.8"
+    rotation="-90 0 0"
+    visible="false">
+  </a-entity>
+
+  <!-- Modelo del coati -->
   <a-entity
     id="modelo"
     gltf-model="models/coati.glb"
@@ -248,30 +393,117 @@
     rotation="0 0 0">
   </a-entity>
 
-  <!-- Modelo (SUELO) -->
+  <!-- Suelo (solo visible en modo normal) -->
   <a-entity
+    id="ground"
     gltf-model="models/ground.glb"
     position="0 -1.8 0"
     scale="3 3 3"
     rotation="0 0 0">
   </a-entity>
 
-  <!-- RIG DE CÁMARA -->
+  <!-- Cámara para modo normal -->
   <a-entity id="cameraRig" rotation="0 0 0">
     <a-camera
       position="0 0.5 4"
-      look-at="#modelo"
       look-controls="enabled: false"
       wasd-controls="enabled: true">
     </a-camera>
   </a-entity>
-
 </a-scene>
 
+<!-- Modal de confirmación AR -->
+<div id="arModal">
+  <div class="modal-content">
+    <h2>🎯 Modo Realidad Aumentada</h2>
+    <p>El modo AR te permitirá ver el modelo en tu entorno real.</p>
+    <ul style="text-align: left; color: #666;">
+      <li>📱 Apunta tu cámara al suelo</li>
+      <li>👆 Toca donde quieras colocar el modelo</li>
+      <li>🔄 Mueve tu cámara para verlo desde todos los ángulos</li>
+    </ul>
+    <p style="font-size: 12px; color: #999;">
+      <strong>Requisitos:</strong> Android con ARCore (Chrome/Edge)
+    </p>
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="cerrarModalAR()">Cancelar</button>
+      <button class="btn-confirm" onclick="confirmarAR()">Activar AR</button>
+    </div>
+  </div>
+</div>
+
+<!-- Instrucciones AR -->
+<div id="arInstructions">
+  <div class="ar-badge">🎯 MODO AR ACTIVO</div>
+  <div id="arInstructionText">
+    <strong id="arStatusText">Buscando superficies...</strong><br>
+    <small id="arHelpText">Apunta tu cámara al suelo y muévela lentamente</small>
+  </div>
+  <button onclick="salirModoAR()" style="margin-top: 10px; padding: 8px 15px; background: rgba(255,255,255,0.9); border: none; border-radius: 5px; cursor: pointer;">
+    🔙 Salir de AR
+  </button>
+</div>
+
+<!-- UI Principal -->
+<div id="ui">
+  <div id="animalTitle">🦡 Coatí</div>
+
+  <button onclick="togglePanel()">ℹ️ Información</button>
+  <button onclick="reproducirSonido()">🔊 Sonido</button>
+  <button class="ar-button" onclick="activarModoAR()" id="btnAR">📱 Modo AR</button>
+
+  <div id="panel" style="display: none;">
+    <h3 id="titulo"></h3>
+    <p id="descripcion"></p>
+    
+    <div class="info-buttons">
+      <button data-info="habitat" onclick="mostrarInfo('habitat')">🌍 Hábitat</button>
+      <button data-info="alimentacion" onclick="mostrarInfo('alimentacion')">🍃 Alimentación</button>
+      <button data-info="conservacion" onclick="mostrarInfo('conservacion')">🛡️ Conservación</button>
+    </div>
+    
+    <div id="infoContent" style="display: none;"></div>
+    
+    <div id="instrucciones">
+      <strong>PC:</strong> WASD: Mover | Arrastrar: Rotar | Rueda: Zoom<br>
+      <strong>Móvil:</strong> Deslizar: Rotar | Pinch: Zoom<br>
+      <strong>AR:</strong> Detección de superficies y colocación táctil
+    </div>
+  </div>
+
+  <div id="audioPanel">
+    <h4 id="audioTitle">🔊 Audio</h4>
+    
+    <div class="audio-controls">
+      <button onclick="rebobinarAudio()">⏪ -5s</button>
+      <button id="playPauseBtn" onclick="togglePlayPause()">⏸️ Pausar</button>
+      <button onclick="ocultarPanelAudio()">❌ Cerrar</button>
+    </div>
+    
+    <div id="progressContainer" onclick="clickProgress(event)">
+      <div id="progressBar"></div>
+    </div>
+    
+    <div id="timeDisplay">0:00 / 0:00</div>
+  </div>
+</div>
+
 <script>
-  // Control de rotación con mouse y touch
+  // VARIABLES GLOBALES
+  let modoAR = false;
+  let modeloColocado = false;
+  let esMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  let xrHitTestSource = null;
+  let hitTestSourceRequested = false;
+  let reticleVisible = false;
+  let lastHitPose = null;
+
+  // ========================================
+  // CONTROL DE ROTACIÓN Y ZOOM (MODO NORMAL)
+  // ========================================
   window.addEventListener('DOMContentLoaded', () => {
     const rig = document.querySelector('#cameraRig');
+    const camera = document.querySelector('a-camera');
 
     if (!rig) {
       console.error('cameraRig no encontrado');
@@ -281,10 +513,13 @@
     let dragging = false;
     let lastX = 0;
     let rotationY = 0;
+    let zoom = 4;
+    const cameraY = 0.5;
 
-    // Eventos de mouse
+    // ===== EVENTOS DE MOUSE =====
     window.addEventListener('mousedown', e => {
-      if (e.target.closest('#ui')) return; // Ignorar clics en UI
+      if (modoAR) return;
+      if (e.target.closest('#ui')) return;
       dragging = true;
       lastX = e.clientX;
     });
@@ -292,6 +527,7 @@
     window.addEventListener('mouseup', () => dragging = false);
 
     window.addEventListener('mousemove', e => {
+      if (modoAR) return;
       if (!dragging) return;
 
       const delta = e.clientX - lastX;
@@ -301,48 +537,24 @@
       rig.setAttribute('rotation', `0 ${rotationY} 0`);
     });
 
-    // Eventos táctiles para móviles
-    window.addEventListener('touchstart', e => {
-      if (e.target.closest('#ui')) return; // Ignorar toques en UI
-      dragging = true;
-      lastX = e.touches[0].clientX;
-    }, { passive: true });
-
-    window.addEventListener('touchend', () => dragging = false);
-
-    window.addEventListener('touchmove', e => {
-      if (!dragging) return;
-      
-      const delta = e.touches[0].clientX - lastX;
-      lastX = e.touches[0].clientX;
-
-      rotationY += delta * 0.3;
-      rig.setAttribute('rotation', `0 ${rotationY} 0`);
-    }, { passive: true });
-  });
-</script>
-
-<script>
-  // Control de zoom con rueda del mouse y pinch en móviles
-  window.addEventListener('DOMContentLoaded', () => {
-    const camera = document.querySelector('a-camera');
-    let zoom = 4;
-    const cameraY = 0.5;
-
-    // Zoom con rueda del mouse
+    // ===== ZOOM CON RUEDA DEL MOUSE =====
     window.addEventListener('wheel', e => {
-      if (e.target.closest('#ui')) return; // Ignorar scroll en UI
+      if (modoAR) return;
+      if (e.target.closest('#ui')) return;
       zoom += e.deltaY * 0.01;
       zoom = Math.min(Math.max(zoom, 2), 12);
-
       camera.setAttribute('position', `0 ${cameraY} ${zoom}`);
     });
 
-    // Zoom con pinch en móviles
-    let lastDistance = 0;
-    
+    // ===== EVENTOS TÁCTILES =====
     window.addEventListener('touchstart', e => {
-      if (e.touches.length === 2) {
+      if (modoAR) return;
+      if (e.target.closest('#ui')) return;
+      
+      if (e.touches.length === 1) {
+        dragging = true;
+        lastX = e.touches[0].clientX;
+      } else if (e.touches.length === 2) {
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         lastDistance = Math.hypot(
@@ -352,8 +564,19 @@
       }
     }, { passive: true });
 
+    window.addEventListener('touchend', () => dragging = false);
+
+    let lastDistance = 0;
+
     window.addEventListener('touchmove', e => {
-      if (e.touches.length === 2) {
+      if (modoAR) return;
+      
+      if (e.touches.length === 1 && dragging) {
+        const delta = e.touches[0].clientX - lastX;
+        lastX = e.touches[0].clientX;
+        rotationY += delta * 0.3;
+        rig.setAttribute('rotation', `0 ${rotationY} 0`);
+      } else if (e.touches.length === 2) {
         e.preventDefault();
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
@@ -365,32 +588,29 @@
         const delta = lastDistance - distance;
         zoom += delta * 0.01;
         zoom = Math.min(Math.max(zoom, 2), 12);
-
         camera.setAttribute('position', `0 ${cameraY} ${zoom}`);
         lastDistance = distance;
       }
     }, { passive: false });
   });
-</script>
 
-<script>
-  // Información del Coatí
+  // ========================================
+  // INFORMACIÓN DEL ANIMAL
+  // ========================================
   const animal = {
     nombre: "Coatí",
-    descripcion: "El coatí o gato solo es un mamífero diurno de color marrón y hocico alargado. Vive en grupos sociales de hasta 30 individuos, integrados principalmente por hembras, crías y machos juveniles.",
+    descripcion: "El gato solo o coatí es un mamífero diurno de color marrón y hocico alargado. Vive en grupos sociales de hasta 30 individuos, integrados principalmente por hembras, crías y machos juveniles.",
     habitat: "Su distribución abarca desde el suroeste de Estados Unidos hasta el norte de Argentina, incluyendo México, Centroamérica y Panamá. Generalmente se les encuentra en hábitats boscosos como bosques templados, selvas tropicales de tierras bajas y bosques nubosos.",
     alimentacion: "Son omnívoros. Su alimento predilecto son los insectos. Para hallarlos usan su desarrollado olfato que les permite olerlos debajo de la tierra.",
-    conservacion: "Es una especie amenazada, debido a que las especies adultas son cazadas por cazadores de subsistencia, o cazadores-recolectores, para alimentarse por lo que muchas veces las crías quedan sobreviviendo solas.",
+    conservacion: "Es una especie amenazada, debido a que las especies adultas son cazadas por cazadores de subsistencia, o cazadores-recolectores, para alimentarse por lo que muchas veces las crías quedan sobreviviendo solas."
   };
 
   let infoActiva = null;
 
-  // Función para mostrar información del animal
   function mostrarAnimal() {
     document.getElementById('titulo').textContent = animal.nombre;
     document.getElementById('descripcion').textContent = animal.descripcion;
     
-    // Si había info adicional visible, actualizarla
     if (infoActiva) {
       mostrarInfo(infoActiva);
     } else {
@@ -398,7 +618,6 @@
     }
   }
 
-  // Función para mostrar información adicional
   function mostrarInfo(tipo) {
     const infoContent = document.getElementById('infoContent');
     
@@ -406,7 +625,6 @@
     let contenido = '';
     
     if (infoActiva === tipo) {
-      // Si se clickea el mismo botón, ocultar
       infoActiva = null;
       infoContent.style.display = 'none';
       actualizarBotonesInfo();
@@ -434,7 +652,6 @@
     actualizarBotonesInfo();
   }
 
-  // Actualizar botones de información
   function actualizarBotonesInfo() {
     const botonesInfo = document.querySelectorAll('.info-buttons button');
     botonesInfo.forEach(btn => {
@@ -447,7 +664,6 @@
     });
   }
 
-  // Función para mostrar/ocultar panel
   function togglePanel() {
     const panel = document.getElementById('panel');
     if (panel.style.display === 'none') {
@@ -457,7 +673,251 @@
     }
   }
 
-  // Función para reproducir sonido
+  // ========================================
+  // MODO AR - FUNCIONES PRINCIPALES
+  // ========================================
+  function activarModoAR() {
+    document.getElementById('arModal').classList.add('show');
+  }
+
+  function cerrarModalAR() {
+    document.getElementById('arModal').classList.remove('show');
+  }
+
+  async function confirmarAR() {
+    cerrarModalAR();
+    
+    if (!esMobile) {
+      alert('⚠️ El modo AR con detección de superficies solo está disponible en dispositivos móviles Android con ARCore.');
+      return;
+    }
+
+    try {
+      if (!navigator.xr) {
+        alert('❌ Tu dispositivo no soporta WebXR.\n\nNecesitas:\n- Android con ARCore\n- Chrome o Edge actualizado');
+        return;
+      }
+
+      const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      
+      if (!supported) {
+        alert('❌ AR no disponible.\n\nRequisitos:\n- Android con Google Play Services para AR\n- Chrome/Edge actualizado');
+        return;
+      }
+
+      modoAR = true;
+      modeloColocado = false;
+      hitTestSourceRequested = false;
+      document.body.classList.add('ar-mode');
+      
+      // Ocultar elementos de modo normal
+      const sky = document.querySelector('a-sky');
+      const ground = document.querySelector('#ground');
+      if (sky) sky.setAttribute('visible', false);
+      if (ground) ground.setAttribute('visible', false);
+      
+      // Ocultar modelo hasta que se coloque
+      const modelo = document.querySelector('#modelo');
+      modelo.setAttribute('visible', false);
+      modelo.setAttribute('scale', '1.5 1.5 1.5');
+      
+      // Mostrar instrucciones AR
+      document.getElementById('arInstructions').style.display = 'block';
+      
+      // Entrar en modo AR
+      const scene = document.querySelector('a-scene');
+      await scene.enterAR();
+      
+      console.log('✅ Modo AR activado');
+      
+    } catch (error) {
+      console.error('Error al activar AR:', error);
+      alert('❌ Error al iniciar AR:\n' + error.message);
+      salirModoAR();
+    }
+  }
+
+  function salirModoAR() {
+    const scene = document.querySelector('a-scene');
+    
+    if (scene.is('ar-mode')) {
+      scene.exitAR();
+    }
+    
+    modoAR = false;
+    modeloColocado = false;
+    hitTestSourceRequested = false;
+    reticleVisible = false;
+    document.body.classList.remove('ar-mode');
+    
+    // Restaurar visibilidad
+    const sky = document.querySelector('a-sky');
+    const ground = document.querySelector('#ground');
+    const reticle = document.querySelector('#reticle');
+    
+    if (sky) sky.setAttribute('visible', true);
+    if (ground) ground.setAttribute('visible', true);
+    if (reticle) reticle.setAttribute('visible', false);
+    
+    // Restaurar modelo
+    const modelo = document.querySelector('#modelo');
+    modelo.setAttribute('scale', '5 5 5');
+    modelo.setAttribute('position', '0 0 0');
+    modelo.setAttribute('visible', true);
+    
+    // Ocultar UI de AR
+    document.getElementById('arInstructions').style.display = 'none';
+    document.getElementById('surfaceIndicator').style.display = 'none';
+    
+    // Limpiar hit-test
+    if (xrHitTestSource) {
+      xrHitTestSource.cancel();
+      xrHitTestSource = null;
+    }
+    
+    console.log('✅ Salido del modo AR');
+  }
+
+  // ========================================
+  // AR HIT-TEST - DETECCIÓN DE SUPERFICIES
+  // ========================================
+  const scene = document.querySelector('a-scene');
+  
+  scene.addEventListener('enter-vr', async () => {
+    if (!scene.is('ar-mode')) return;
+    
+    console.log('🎯 Entrando en sesión AR...');
+    
+    const renderer = scene.renderer;
+    const session = renderer.xr.getSession();
+    
+    if (!session) {
+      console.error('❌ No hay sesión XR');
+      return;
+    }
+
+    // Iniciar el loop de hit-test
+    renderer.xr.addEventListener('sessionstart', () => {
+      session.requestReferenceSpace('viewer').then((refSpace) => {
+        session.requestHitTestSource({ space: refSpace }).then((hitTestSource) => {
+          xrHitTestSource = hitTestSource;
+          hitTestSourceRequested = true;
+          console.log('✅ Hit-test source inicializado');
+        }).catch(err => {
+          console.error('❌ Error al crear hit-test source:', err);
+        });
+      });
+    });
+
+    // Loop de renderizado para detección continua
+    function onXRFrame(time, frame) {
+      if (!modoAR) return;
+      if (!frame) return;
+      if (modeloColocado) return;
+
+      const session = frame.session;
+      
+      if (xrHitTestSource && hitTestSourceRequested) {
+        const hitTestResults = frame.getHitTestResults(xrHitTestSource);
+        
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(renderer.xr.getReferenceSpace());
+          
+          if (pose) {
+            const reticle = document.querySelector('#reticle');
+            
+            // Actualizar posición del reticle
+            reticle.setAttribute('position', {
+              x: pose.transform.position.x,
+              y: pose.transform.position.y,
+              z: pose.transform.position.z
+            });
+            
+            if (!reticleVisible) {
+              reticle.setAttribute('visible', true);
+              reticleVisible = true;
+            }
+            
+            // Guardar última pose válida
+            lastHitPose = pose;
+            
+            // Actualizar UI
+            document.getElementById('surfaceIndicator').style.display = 'block';
+            document.getElementById('arStatusText').textContent = '✅ Superficie detectada';
+            document.getElementById('arHelpText').textContent = 'Toca la pantalla para colocar el modelo';
+          }
+        } else {
+          // No hay superficies detectadas
+          const reticle = document.querySelector('#reticle');
+          if (reticleVisible) {
+            reticle.setAttribute('visible', false);
+            reticleVisible = false;
+          }
+          
+          document.getElementById('surfaceIndicator').style.display = 'none';
+          document.getElementById('arStatusText').textContent = 'Buscando superficies...';
+          document.getElementById('arHelpText').textContent = 'Apunta tu cámara al suelo y muévela lentamente';
+        }
+      }
+
+      session.requestAnimationFrame(onXRFrame);
+    }
+
+    session.requestAnimationFrame(onXRFrame);
+  });
+
+  scene.addEventListener('exit-vr', () => {
+    if (modoAR) {
+      salirModoAR();
+    }
+  });
+
+  // ========================================
+  // COLOCACIÓN DEL MODELO EN AR
+  // ========================================
+  window.addEventListener('touchend', (e) => {
+    if (!modoAR) return;
+    if (modeloColocado) return;
+    if (e.target.closest('#ui')) return;
+    if (e.target.closest('#arInstructions')) return;
+    
+    if (lastHitPose) {
+      colocarModelo(lastHitPose);
+    }
+  });
+
+  function colocarModelo(pose) {
+    const modelo = document.querySelector('#modelo');
+    const reticle = document.querySelector('#reticle');
+    
+    // Posicionar el modelo donde está el reticle
+    modelo.setAttribute('position', {
+      x: pose.transform.position.x,
+      y: pose.transform.position.y,
+      z: pose.transform.position.z
+    });
+    
+    // Hacer visible el modelo
+    modelo.setAttribute('visible', true);
+    
+    // Ocultar reticle
+    reticle.setAttribute('visible', false);
+    
+    modeloColocado = true;
+    reticleVisible = false;
+    
+    // Actualizar UI
+    document.getElementById('surfaceIndicator').style.display = 'none';
+    document.getElementById('arStatusText').textContent = '✅ Modelo colocado';
+    document.getElementById('arHelpText').textContent = 'Mueve tu cámara para verlo desde diferentes ángulos';
+    
+    console.log('✅ Modelo colocado en:', pose.transform.position);
+  }
+
+  // ========================================
+  // AUDIO DEL COATI
+  // ========================================
   let audioActual = null;
   let isPlaying = false;
 
@@ -533,7 +993,6 @@
       const duration = formatTime(audioActual.duration || 0);
       document.getElementById('timeDisplay').textContent = `${currentTime} / ${duration}`;
       
-      // Si terminó el audio
       if (audioActual.currentTime >= audioActual.duration) {
         isPlaying = false;
         actualizarBotonPlay();
@@ -541,7 +1000,6 @@
     }
   }, 100);
 
-  // Click en barra de progreso para saltar (mouse y touch)
   function clickProgress(e) {
     if (!audioActual) return;
     
@@ -552,7 +1010,9 @@
     audioActual.currentTime = percent * audioActual.duration;
   }
 
-  // Soporte táctil para la barra de progreso
+  // ========================================
+  // INICIALIZACIÓN
+  // ========================================
   document.addEventListener('DOMContentLoaded', () => {
     const progressContainer = document.getElementById('progressContainer');
     
@@ -570,47 +1030,6 @@
     mostrarAnimal();
   });
 </script>
-
-<div id="ui">
-  <div id="animalTitle">Coatí</div>
-
-  <button onclick="togglePanel()">ℹ️ Información</button>
-  <button onclick="reproducirSonido()">🔊 Sonido</button>
-
-  <div id="panel" style="display: none;">
-    <h3 id="titulo"></h3>
-    <p id="descripcion"></p>
-    
-    <div class="info-buttons">
-      <button data-info="habitat" onclick="mostrarInfo('habitat')">🌍 Hábitat</button>
-      <button data-info="alimentacion" onclick="mostrarInfo('alimentacion')">🍃 Alimentación</button>
-      <button data-info="conservacion" onclick="mostrarInfo('conservacion')">🛡️ Conservación</button>
-    </div>
-    
-    <div id="infoContent" style="display: none;"></div>
-    
-    <div id="instrucciones">
-      <strong>PC:</strong> WASD: Mover | Arrastrar: Rotar | Rueda: Zoom<br>
-      <strong>Móvil:</strong> Deslizar: Rotar | Pinch: Zoom
-    </div>
-  </div>
-
-  <div id="audioPanel">
-    <h4 id="audioTitle">🔊 Audio</h4>
-    
-    <div class="audio-controls">
-      <button onclick="rebobinarAudio()">⏪ -5s</button>
-      <button id="playPauseBtn" onclick="togglePlayPause()">⏸️ Pausar</button>
-      <button onclick="ocultarPanelAudio()">❌ Cerrar</button>
-    </div>
-    
-    <div id="progressContainer" onclick="clickProgress(event)">
-      <div id="progressBar"></div>
-    </div>
-    
-    <div id="timeDisplay">0:00 / 0:00</div>
-  </div>
-</div>
 
 </body>
 </html>
