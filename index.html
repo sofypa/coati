@@ -3,16 +3,42 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>C - Visualizador 3D</title>
+  <title>Coatí - Visualizador 3D</title>
   <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/webxr-polyfill@latest/build/webxr-polyfill.min.js"></script>
 
 <style>
+  * {
+    font-family:
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      Helvetica,
+      Arial,
+      sans-serif;
+  }
+
   body {
     margin: 0;
     padding: 0;
     overflow: hidden;
     touch-action: none;
+  }
+
+  #arOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  #arOverlay * {
+    pointer-events: auto;
   }
 
   #ui {
@@ -21,70 +47,158 @@
     left: 10px;
     right: 10px;
     z-index: 999;
-    max-width: 400px;
   }
 
-  button {
-    padding: 10px 14px;
-    margin-right: 5px;
-    margin-bottom: 5px;
+  /* Contenedor de logos */
+  #logosContainer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    pointer-events: auto;
+  }
+
+  #logosContainer img {
+    height: 50px;
+    width: auto;
+  }
+
+  /* Título con color específico */
+#animalTitle {
+  background: rgba(255, 255, 255, 0.65);
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 30px;
+  margin-left: auto;
+  margin-right: auto;
+  max-width: 400px;
+
+  font-size: 22px;
+  font-weight: 900;
+  text-align: center;
+
+  color: white;
+  text-shadow: 2px 2px 2px rgba(0,0,0,0.8);
+
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.4);
+
+  pointer-events: auto;
+}
+
+  /* Contenedor de dos columnas de botones */
+  .buttons-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    pointer-events: auto;
+    width: 100%;
+  }
+
+  /* Columna izquierda - Botones de información */
+  .info-buttons-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* Columna derecha - Botones de sonido y AR */
+  .action-buttons-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .info-buttons-vertical .button-wrapper,
+  .action-buttons-vertical .button-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .info-buttons-vertical button,
+  .action-buttons-vertical button {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    margin: 0;
     cursor: pointer;
-    background: white;
+    background: rgba(255, 255, 255, 0.65);
     border: 2px solid #333;
-    border-radius: 4px;
-    font-size: 14px;
+    border-radius: 50%;
     touch-action: manipulation;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
-  button:hover {
+  .info-buttons-vertical button img,
+  .action-buttons-vertical button img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+  }
+
+  .info-buttons-vertical .button-wrapper span,
+  .action-buttons-vertical .button-wrapper span {
+    text-align: center;
+    font-size: 13px;
+    color: white;
+    font-weight: 500;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+  }
+
+  .info-buttons-vertical button:hover,
+  .action-buttons-vertical button:hover {
     background: #f0f0f0;
   }
 
-  button.active {
-    background: #4CAF50;
-    color: white;
-  }
-
-  button.ar-button {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-  }
-
-  button.ar-button:hover {
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  .info-buttons-vertical button.active,
+  .action-buttons-vertical button.active {
+    background: #469352;
+    border-color: #4CAF50;
   }
 
   #panel {
     margin-top: 10px;
-    background: rgba(0,0,0,0.8);
-    color: white;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.65);
+    color: #333;
     padding: 15px;
     border-radius: 8px;
     max-height: 70vh;
     overflow-y: auto;
+    pointer-events: auto;
   }
 
   #panel h3 {
     margin-top: 0;
-    color: #4CAF50;
+    color: #034732;
     font-size: 18px;
   }
 
   #instrucciones {
     margin-top: 10px;
     font-size: 11px;
-    color: #ccc;
+    color: #666;
     line-height: 1.4;
   }
 
   #audioPanel {
     margin-top: 10px;
+    margin-left: auto;
+    margin-right: auto;
+    max-width: 400px;
     background: rgba(0,0,0,0.9);
     color: white;
     padding: 15px;
     border-radius: 8px;
     display: none;
+    pointer-events: auto;
   }
 
   #audioPanel h4 {
@@ -131,24 +245,10 @@
     text-align: center;
   }
 
-  .info-buttons {
-    margin-top: 10px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-  }
-
-  .info-buttons button {
-    flex: 1 1 calc(50% - 5px);
-    font-size: 12px;
-    padding: 8px 10px;
-    margin: 0;
-  }
-
   #infoContent {
     margin-top: 10px;
     padding: 12px;
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.3);
     border-radius: 5px;
     font-size: 14px;
     line-height: 1.5;
@@ -158,7 +258,7 @@
 
   #infoContent h4 {
     margin: 0 0 8px 0;
-    color: #FFD700;
+    color: #034732;
     font-size: 15px;
   }
 
@@ -167,7 +267,7 @@
   }
 
   #infoContent::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.1);
     border-radius: 4px;
   }
 
@@ -181,7 +281,7 @@
   }
 
   #panel::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.1);
     border-radius: 4px;
   }
 
@@ -190,15 +290,21 @@
     border-radius: 4px;
   }
 
-  #animalTitle {
-    background: rgba(76, 175, 80, 0.9);
+  #arExitMessage {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
     color: white;
-    padding: 8px;
-    border-radius: 4px;
-    margin-bottom: 5px;
-    text-align: center;
-    font-weight: bold;
+    padding: 12px 20px;
+    border-radius: 8px;
     font-size: 14px;
+    text-align: center;
+    z-index: 1001;
+    display: none;
+    pointer-events: none;
+    max-width: 80%;
   }
 
   #arModal {
@@ -259,34 +365,6 @@
     border: none;
   }
 
-  #arInstructions {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.85);
-    color: white;
-    padding: 15px 20px;
-    border-radius: 10px;
-    font-size: 14px;
-    text-align: center;
-    max-width: 90%;
-    backdrop-filter: blur(10px);
-    z-index: 998;
-    display: none;
-  }
-
-  .ar-badge {
-    background: rgba(255, 152, 0, 0.9);
-    color: white;
-    padding: 5px 10px;
-    border-radius: 15px;
-    font-size: 11px;
-    font-weight: bold;
-    display: inline-block;
-    margin-bottom: 5px;
-  }
-
   #surfaceIndicator {
     position: fixed;
     top: 50%;
@@ -307,14 +385,61 @@
     50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.5; }
   }
 
+  /* Estilos para modo AR */
+  body.ar-mode #ui {
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 10px;
+    pointer-events: auto;
+  }
+
+  body.ar-mode #ui * {
+    pointer-events: auto;
+  }
+
+  body.ar-mode #logosContainer,
+  body.ar-mode #animalTitle,
+  body.ar-mode .buttons-container,
+  body.ar-mode #panel,
+  body.ar-mode #audioPanel {
+    display: none !important;
+  }
+
   @media (max-width: 768px) {
-    #ui {
-      max-width: calc(100% - 20px);
+    #logosContainer img {
+      height: 50px;
     }
 
-    button {
-      font-size: 13px;
-      padding: 9px 12px;
+    #animalTitle {
+      font-size: 20px;
+      padding: 12px 15px;
+      max-width: calc(100% - 140px);
+    }
+
+    .buttons-container {
+      gap: 10px;
+    }
+
+    .info-buttons-vertical,
+    .action-buttons-vertical {
+      gap: 10px;
+    }
+
+    .info-buttons-vertical button,
+    .action-buttons-vertical button {
+      width: 55px;
+      height: 55px;
+    }
+
+    .info-buttons-vertical button img,
+    .action-buttons-vertical button img {
+      width: 35px;
+      height: 35px;
+    }
+
+    .info-buttons-vertical .button-wrapper span,
+    .action-buttons-vertical .button-wrapper span {
+      font-size: 11px;
     }
 
     #panel h3 {
@@ -326,11 +451,6 @@
       max-height: 200px;
     }
 
-    .info-buttons button {
-      font-size: 11px;
-      padding: 7px 8px;
-    }
-
     #instrucciones {
       font-size: 10px;
     }
@@ -339,16 +459,6 @@
       margin: 20px;
       padding: 20px;
     }
-  }
-
-  body.ar-mode #ui {
-    background: rgba(255,255,255,0.1);
-    border-radius: 10px;
-    padding: 10px;
-  }
-
-  body.ar-mode #arInstructions {
-    display: block;
   }
 </style>
 
@@ -362,7 +472,7 @@
 <!-- ESCENA -->
 <a-scene 
   id="normalScene" 
-  webxr="requiredFeatures: hit-test,local-floor; optionalFeatures: dom-overlay,unbounded; overlayElement: #ui;"
+  webxr="requiredFeatures: hit-test,local-floor; optionalFeatures: dom-overlay,unbounded; overlayElement: #arOverlay;"
   renderer="colorManagement: true; physicallyCorrectLights: true;">
   
   <a-assets>
@@ -378,8 +488,8 @@
   <!-- Reticle para AR (invisible en modo normal) -->
   <a-entity
     id="reticle"
-    geometry="primitive: ring; radiusInner: 0.08; radiusOuter: 0.1"
-    material="color: #4CAF50; shader: flat; opacity: 0.8"
+    geometry="primitive: ring; radiusInner: 0.15; radiusOuter: 0.2"
+    material="color: #4CAF50; shader: flat; side: double"
     rotation="-90 0 0"
     visible="false">
   </a-entity>
@@ -388,7 +498,7 @@
   <a-entity
     id="modelo"
     gltf-model="models/coati.glb"
-    position="0 0 0"
+    position="0.4 0 0"
     scale="5 5 5"
     rotation="0 0 0">
   </a-entity>
@@ -432,35 +542,75 @@
   </div>
 </div>
 
-<!-- Instrucciones AR -->
-<div id="arInstructions">
-  <div class="ar-badge">🎯 MODO AR ACTIVO</div>
-  <div id="arInstructionText">
-    <strong id="arStatusText">Buscando superficies...</strong><br>
-    <small id="arHelpText">Apunta tu cámara al suelo y muévela lentamente</small>
-  </div>
-  <button onclick="salirModoAR()" style="margin-top: 10px; padding: 8px 15px; background: rgba(255,255,255,0.9); border: none; border-radius: 5px; cursor: pointer;">
-    🔙 Salir de AR
-  </button>
+<!-- Contenedor para DOM Overlay -->
+<div id="arOverlay">
+
+<!-- Mensaje de salida AR -->
+<div id="arExitMessage">
+  Para salir del modo AR, echa el celular hacia atrás
 </div>
+  <!-- UI Principal -->
+  <div id="ui">
+  <!-- Logos -->
+  <div id="logosContainer">
+    <img src="images/logoUTP.png" alt="Logo UTP">
+    <img src="images/logoDIGITED.png" alt="Logo DIGITED">
+  </div>
 
-<!-- UI Principal -->
-<div id="ui">
-  <div id="animalTitle">🦡 Coatí</div>
+  <!-- Título -->
+  <div id="animalTitle">Coatí</div>
 
-  <button onclick="togglePanel()">ℹ️ Información</button>
-  <button onclick="reproducirSonido()">🔊 Sonido</button>
-  <button class="ar-button" onclick="activarModoAR()" id="btnAR">📱 Modo AR</button>
+  <!-- Contenedor de dos columnas de botones -->
+  <div class="buttons-container">
+    <!-- Columna izquierda: Botones de información -->
+    <div class="info-buttons-vertical">
+      <div class="button-wrapper">
+        <button data-info="informacion" onclick="mostrarInfo('informacion')">
+          <img src="images/information.png" alt="Información" id="btnInfoImg">
+        </button>
+        <span>Info</span>
+      </div>
+      <div class="button-wrapper">
+        <button data-info="alimentacion" onclick="mostrarInfo('alimentacion')">
+          <img src="images/alimentacion.png" alt="Alimentación" id="btnAlimentacionImg">
+        </button>
+        <span>Alimento</span>
+      </div>
+      <div class="button-wrapper">
+        <button data-info="habitat" onclick="mostrarInfo('habitat')">
+          <img src="images/habitat.png" alt="Hábitat" id="btnHabitatImg">
+        </button>
+        <span>Hábitat</span>
+      </div>
+      <div class="button-wrapper">
+        <button data-info="conservacion" onclick="mostrarInfo('conservacion')">
+          <img src="images/conservacion.png" alt="Conservación" id="btnConservacionImg">
+        </button>
+        <span>Riesgo</span>
+      </div>
+    </div>
 
+    <!-- Columna derecha: Botones de sonido y AR -->
+    <div class="action-buttons-vertical">
+      <div class="button-wrapper">
+        <button data-info="sonido" onclick="toggleSonido()">
+          <img src="images/sonido.png" alt="Sonido" id="btnSonidoImg">
+        </button>
+        <span>Sonido</span>
+      </div>
+      <div class="button-wrapper">
+        <button class="ar-button" data-info="ar" onclick="activarModoAR()" id="btnAR">
+          <img src="images/AR.png" alt="AR" id="btnARImg">
+        </button>
+        <span>Modo AR</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel de información -->
   <div id="panel" style="display: none;">
     <h3 id="titulo"></h3>
     <p id="descripcion"></p>
-    
-    <div class="info-buttons">
-      <button data-info="habitat" onclick="mostrarInfo('habitat')">🌍 Hábitat</button>
-      <button data-info="alimentacion" onclick="mostrarInfo('alimentacion')">🍃 Alimentación</button>
-      <button data-info="conservacion" onclick="mostrarInfo('conservacion')">🛡️ Conservación</button>
-    </div>
     
     <div id="infoContent" style="display: none;"></div>
     
@@ -471,13 +621,13 @@
     </div>
   </div>
 
+  <!-- Panel de audio -->
   <div id="audioPanel">
     <h4 id="audioTitle">🔊 Audio</h4>
     
     <div class="audio-controls">
       <button onclick="rebobinarAudio()">⏪ -5s</button>
       <button id="playPauseBtn" onclick="togglePlayPause()">⏸️ Pausar</button>
-      <button onclick="ocultarPanelAudio()">❌ Cerrar</button>
     </div>
     
     <div id="progressContainer" onclick="clickProgress(event)">
@@ -487,6 +637,9 @@
     <div id="timeDisplay">0:00 / 0:00</div>
   </div>
 </div>
+
+</div>
+<!-- Fin del contenedor arOverlay -->
 
 <script>
   // VARIABLES GLOBALES
@@ -506,7 +659,6 @@
     const camera = document.querySelector('a-camera');
 
     if (!rig) {
-      console.error('cameraRig no encontrado');
       return;
     }
 
@@ -519,7 +671,14 @@
     // ===== EVENTOS DE MOUSE =====
     window.addEventListener('mousedown', e => {
       if (modoAR) return;
-      if (e.target.closest('#ui')) return;
+      // Solo bloquear si es un elemento interactivo específico
+      if (e.target.closest('button') || 
+          e.target.closest('#panel') || 
+          e.target.closest('#audioPanel') ||
+          e.target.closest('#logosContainer') ||
+          e.target.closest('#animalTitle')) {
+        return;
+      }
       dragging = true;
       lastX = e.clientX;
     });
@@ -533,14 +692,21 @@
       const delta = e.clientX - lastX;
       lastX = e.clientX;
 
-      rotationY += delta * 0.3;
+      rotationY -= delta * 0.3;
       rig.setAttribute('rotation', `0 ${rotationY} 0`);
     });
 
     // ===== ZOOM CON RUEDA DEL MOUSE =====
     window.addEventListener('wheel', e => {
       if (modoAR) return;
-      if (e.target.closest('#ui')) return;
+      // Solo bloquear si es un elemento interactivo específico
+      if (e.target.closest('button') || 
+          e.target.closest('#panel') || 
+          e.target.closest('#audioPanel') ||
+          e.target.closest('#logosContainer') ||
+          e.target.closest('#animalTitle')) {
+        return;
+      }
       zoom += e.deltaY * 0.01;
       zoom = Math.min(Math.max(zoom, 2), 12);
       camera.setAttribute('position', `0 ${cameraY} ${zoom}`);
@@ -549,7 +715,15 @@
     // ===== EVENTOS TÁCTILES =====
     window.addEventListener('touchstart', e => {
       if (modoAR) return;
-      if (e.target.closest('#ui')) return;
+      
+      // Solo bloquear si es un elemento interactivo específico
+      if (e.target.closest('button') || 
+          e.target.closest('#panel') || 
+          e.target.closest('#audioPanel') ||
+          e.target.closest('#logosContainer') ||
+          e.target.closest('#animalTitle')) {
+        return;
+      }
       
       if (e.touches.length === 1) {
         dragging = true;
@@ -574,7 +748,7 @@
       if (e.touches.length === 1 && dragging) {
         const delta = e.touches[0].clientX - lastX;
         lastX = e.touches[0].clientX;
-        rotationY += delta * 0.3;
+        rotationY -= delta * 0.3;
         rig.setAttribute('rotation', `0 ${rotationY} 0`);
       } else if (e.touches.length === 2) {
         e.preventDefault();
@@ -609,7 +783,7 @@
 
   function mostrarAnimal() {
     document.getElementById('titulo').textContent = animal.nombre;
-    document.getElementById('descripcion').textContent = animal.descripcion;
+   
     
     if (infoActiva) {
       mostrarInfo(infoActiva);
@@ -620,18 +794,23 @@
 
   function mostrarInfo(tipo) {
     const infoContent = document.getElementById('infoContent');
+    const panel = document.getElementById('panel');
     
     let titulo = '';
     let contenido = '';
     
     if (infoActiva === tipo) {
       infoActiva = null;
-      infoContent.style.display = 'none';
+      panel.style.display = 'none';
       actualizarBotonesInfo();
       return;
     }
     
     switch(tipo) {
+      case 'informacion':
+        titulo = 'ℹ️ Información';
+        contenido = animal.descripcion;
+        break;
       case 'habitat':
         titulo = '🌍 Hábitat';
         contenido = animal.habitat;
@@ -646,20 +825,58 @@
         break;
     }
     
+    document.getElementById('titulo').textContent = animal.nombre;
     infoContent.innerHTML = `<h4>${titulo}</h4><p>${contenido}</p>`;
     infoContent.style.display = 'block';
+    panel.style.display = 'block';
     infoActiva = tipo;
     actualizarBotonesInfo();
   }
 
   function actualizarBotonesInfo() {
-    const botonesInfo = document.querySelectorAll('.info-buttons button');
+    const botonesInfo = document.querySelectorAll('.info-buttons-vertical button');
     botonesInfo.forEach(btn => {
       const tipo = btn.getAttribute('data-info');
+      const img = btn.querySelector('img');
+      
       if (tipo === infoActiva) {
         btn.classList.add('active');
+        // Cambiar a imagen con B (activa)
+        if (img) {
+          switch(tipo) {
+            case 'informacion':
+              img.src = 'images/informationB.png';
+              break;
+            case 'alimentacion':
+              img.src = 'images/alimentacionB.png';
+              break;
+            case 'habitat':
+              img.src = 'images/habitatB.png';
+              break;
+            case 'conservacion':
+              img.src = 'images/conservacionB.png';
+              break;
+          }
+        }
       } else {
         btn.classList.remove('active');
+        // Cambiar a imagen normal (inactiva)
+        if (img) {
+          switch(tipo) {
+            case 'informacion':
+              img.src = 'images/information.png';
+              break;
+            case 'alimentacion':
+              img.src = 'images/alimentacion.png';
+              break;
+            case 'habitat':
+              img.src = 'images/habitat.png';
+              break;
+            case 'conservacion':
+              img.src = 'images/conservacion.png';
+              break;
+          }
+        }
       }
     });
   }
@@ -705,9 +922,16 @@
         return;
       }
 
+      console.log('Iniciando modo AR...');
+
+      // Resetear variables
       modoAR = true;
       modeloColocado = false;
       hitTestSourceRequested = false;
+      reticleVisible = false;
+      lastHitPose = null;
+      xrHitTestSource = null;
+      
       document.body.classList.add('ar-mode');
       
       // Ocultar elementos de modo normal
@@ -721,14 +945,18 @@
       modelo.setAttribute('visible', false);
       modelo.setAttribute('scale', '1.5 1.5 1.5');
       
-      // Mostrar instrucciones AR
-      document.getElementById('arInstructions').style.display = 'block';
+      // Asegurarse de que el reticle esté invisible al inicio
+      const reticle = document.querySelector('#reticle');
+      reticle.setAttribute('visible', false);
+      
+      // Mostrar mensaje de salida
+      document.getElementById('arExitMessage').style.display = 'block';
+      
+      console.log('Configuración AR completa, entrando en modo AR...');
       
       // Entrar en modo AR
       const scene = document.querySelector('a-scene');
       await scene.enterAR();
-      
-      console.log('✅ Modo AR activado');
       
     } catch (error) {
       console.error('Error al activar AR:', error);
@@ -740,42 +968,15 @@
   function salirModoAR() {
     const scene = document.querySelector('a-scene');
     
-    if (scene.is('ar-mode')) {
+    // Primero cerrar correctamente la sesión AR
+    if (scene && scene.is('ar-mode')) {
       scene.exitAR();
     }
     
-    modoAR = false;
-    modeloColocado = false;
-    hitTestSourceRequested = false;
-    reticleVisible = false;
-    document.body.classList.remove('ar-mode');
-    
-    // Restaurar visibilidad
-    const sky = document.querySelector('a-sky');
-    const ground = document.querySelector('#ground');
-    const reticle = document.querySelector('#reticle');
-    
-    if (sky) sky.setAttribute('visible', true);
-    if (ground) ground.setAttribute('visible', true);
-    if (reticle) reticle.setAttribute('visible', false);
-    
-    // Restaurar modelo
-    const modelo = document.querySelector('#modelo');
-    modelo.setAttribute('scale', '5 5 5');
-    modelo.setAttribute('position', '0 0 0');
-    modelo.setAttribute('visible', true);
-    
-    // Ocultar UI de AR
-    document.getElementById('arInstructions').style.display = 'none';
-    document.getElementById('surfaceIndicator').style.display = 'none';
-    
-    // Limpiar hit-test
-    if (xrHitTestSource) {
-      xrHitTestSource.cancel();
-      xrHitTestSource = null;
-    }
-    
-    console.log('✅ Salido del modo AR');
+    // Luego navegar hacia atrás en el historial
+    setTimeout(() => {
+      window.history.back();
+    }, 100);
   }
 
   // ========================================
@@ -786,43 +987,41 @@
   scene.addEventListener('enter-vr', async () => {
     if (!scene.is('ar-mode')) return;
     
-    console.log('🎯 Entrando en sesión AR...');
-    
     const renderer = scene.renderer;
     const session = renderer.xr.getSession();
     
     if (!session) {
-      console.error('❌ No hay sesión XR');
+      console.error('No hay sesión XR disponible');
       return;
     }
 
-    // Iniciar el loop de hit-test
-    renderer.xr.addEventListener('sessionstart', () => {
-      session.requestReferenceSpace('viewer').then((refSpace) => {
-        session.requestHitTestSource({ space: refSpace }).then((hitTestSource) => {
-          xrHitTestSource = hitTestSource;
-          hitTestSourceRequested = true;
-          console.log('✅ Hit-test source inicializado');
-        }).catch(err => {
-          console.error('❌ Error al crear hit-test source:', err);
-        });
-      });
-    });
+    console.log('Modo AR iniciado, configurando hit-test...');
+
+    // Solicitar el hit-test source
+    try {
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      xrHitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      hitTestSourceRequested = true;
+      console.log('Hit-test source creado exitosamente');
+    } catch (err) {
+      console.error('Error al crear hit-test source:', err);
+      return;
+    }
 
     // Loop de renderizado para detección continua
     function onXRFrame(time, frame) {
       if (!modoAR) return;
       if (!frame) return;
-      if (modeloColocado) return;
 
       const session = frame.session;
       
       if (xrHitTestSource && hitTestSourceRequested) {
+        const referenceSpace = renderer.xr.getReferenceSpace();
         const hitTestResults = frame.getHitTestResults(xrHitTestSource);
         
-        if (hitTestResults.length > 0) {
+        if (hitTestResults.length > 0 && !modeloColocado) {
           const hit = hitTestResults[0];
-          const pose = hit.getPose(renderer.xr.getReferenceSpace());
+          const pose = hit.getPose(referenceSpace);
           
           if (pose) {
             const reticle = document.querySelector('#reticle');
@@ -834,9 +1033,11 @@
               z: pose.transform.position.z
             });
             
+            // Hacer visible el reticle
             if (!reticleVisible) {
               reticle.setAttribute('visible', true);
               reticleVisible = true;
+              console.log('Reticle visible');
             }
             
             // Guardar última pose válida
@@ -844,20 +1045,17 @@
             
             // Actualizar UI
             document.getElementById('surfaceIndicator').style.display = 'block';
-            document.getElementById('arStatusText').textContent = '✅ Superficie detectada';
-            document.getElementById('arHelpText').textContent = 'Toca la pantalla para colocar el modelo';
           }
-        } else {
+        } else if (!modeloColocado) {
           // No hay superficies detectadas
           const reticle = document.querySelector('#reticle');
           if (reticleVisible) {
             reticle.setAttribute('visible', false);
             reticleVisible = false;
+            lastHitPose = null;
           }
           
           document.getElementById('surfaceIndicator').style.display = 'none';
-          document.getElementById('arStatusText').textContent = 'Buscando superficies...';
-          document.getElementById('arHelpText').textContent = 'Apunta tu cámara al suelo y muévela lentamente';
         }
       }
 
@@ -869,7 +1067,36 @@
 
   scene.addEventListener('exit-vr', () => {
     if (modoAR) {
-      salirModoAR();
+      modoAR = false;
+      modeloColocado = false;
+      hitTestSourceRequested = false;
+      reticleVisible = false;
+      document.body.classList.remove('ar-mode');
+      
+      // Restaurar visibilidad
+      const sky = document.querySelector('a-sky');
+      const ground = document.querySelector('#ground');
+      const reticle = document.querySelector('#reticle');
+      
+      if (sky) sky.setAttribute('visible', true);
+      if (ground) ground.setAttribute('visible', true);
+      if (reticle) reticle.setAttribute('visible', false);
+      
+      // Restaurar modelo
+      const modelo = document.querySelector('#modelo');
+      modelo.setAttribute('scale', '5 5 5');
+      modelo.setAttribute('position', '0 0 0');
+      modelo.setAttribute('visible', true);
+      
+      // Ocultar UI de AR
+      document.getElementById('surfaceIndicator').style.display = 'none';
+      document.getElementById('arExitMessage').style.display = 'none';
+      
+      // Limpiar hit-test
+      if (xrHitTestSource) {
+        xrHitTestSource.cancel();
+        xrHitTestSource = null;
+      }
     }
   });
 
@@ -879,17 +1106,27 @@
   window.addEventListener('touchend', (e) => {
     if (!modoAR) return;
     if (modeloColocado) return;
-    if (e.target.closest('#ui')) return;
-    if (e.target.closest('#arInstructions')) return;
     
-    if (lastHitPose) {
+    // Permitir toques solo si NO son en botones o elementos interactivos
+    const target = e.target;
+    
+    // Verificar si es un botón o está dentro de uno
+    if (target.tagName === 'BUTTON' || target.closest('button')) return;
+    
+    // Solo colocar si hay una pose válida (superficie detectada)
+    if (lastHitPose && reticleVisible) {
+      console.log('Colocando modelo en superficie detectada');
       colocarModelo(lastHitPose);
+    } else {
+      console.log('No hay superficie detectada, no se puede colocar el modelo');
     }
   });
 
   function colocarModelo(pose) {
     const modelo = document.querySelector('#modelo');
     const reticle = document.querySelector('#reticle');
+    
+    console.log('Colocando modelo en posición:', pose.transform.position);
     
     // Posicionar el modelo donde está el reticle
     modelo.setAttribute('position', {
@@ -909,10 +1146,8 @@
     
     // Actualizar UI
     document.getElementById('surfaceIndicator').style.display = 'none';
-    document.getElementById('arStatusText').textContent = '✅ Modelo colocado';
-    document.getElementById('arHelpText').textContent = 'Mueve tu cámara para verlo desde diferentes ángulos';
     
-    console.log('✅ Modelo colocado en:', pose.transform.position);
+    console.log('Modelo colocado exitosamente');
   }
 
   // ========================================
@@ -921,18 +1156,34 @@
   let audioActual = null;
   let isPlaying = false;
 
-  function reproducirSonido() {
+  function toggleSonido() {
+    const audioPanel = document.getElementById('audioPanel');
     const sound = document.querySelector('#sound-coati');
+    const btnSonido = document.querySelector('button[data-info="sonido"]');
+    const imgSonido = document.getElementById('btnSonidoImg');
     
+    // Si el panel está visible, cerrarlo y detener el audio
+    if (audioPanel.style.display === 'block') {
+      ocultarPanelAudio();
+      // Cambiar a imagen normal
+      if (imgSonido) imgSonido.src = 'images/sonido.png';
+      if (btnSonido) btnSonido.classList.remove('active');
+      return;
+    }
+    
+    // Si el panel no está visible, mostrarlo y reproducir
     if (sound) {
       audioActual = sound;
       audioActual.play().catch(err => {
-        console.log('Error al reproducir sonido:', err);
+        // Error al reproducir sonido
       });
       
       isPlaying = true;
       mostrarPanelAudio();
       actualizarBotonPlay();
+      // Cambiar a imagen activa
+      if (imgSonido) imgSonido.src = 'images/sonidoB.png';
+      if (btnSonido) btnSonido.classList.add('active');
     }
   }
 
@@ -944,12 +1195,19 @@
 
   function ocultarPanelAudio() {
     document.getElementById('audioPanel').style.display = 'none';
+    const btnSonido = document.querySelector('button[data-info="sonido"]');
+    const imgSonido = document.getElementById('btnSonidoImg');
+    
     if (audioActual) {
       audioActual.pause();
       audioActual.currentTime = 0;
       isPlaying = false;
       actualizarBotonPlay();
     }
+    
+    // Restaurar imagen normal
+    if (imgSonido) imgSonido.src = 'images/sonido.png';
+    if (btnSonido) btnSonido.classList.remove('active');
   }
 
   function togglePlayPause() {
