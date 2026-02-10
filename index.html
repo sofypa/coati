@@ -96,6 +96,50 @@
 
   pointer-events: auto;
 }
+ .intro-overlay {
+   position: fixed;
+   inset: 0;
+   background: rgba(0, 0, 0, 0.85);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 9999;
+ }
+
+ .intro-card {
+   background: #ffffff;
+   color: #000;
+   padding: 1.5rem;
+   border-radius: 16px;
+   max-width: 340px;
+   width: 90%;
+   text-align: center;
+ }
+
+ .intro-card h2 {
+   margin-bottom: 1rem;
+ }
+
+ .intro-card ul {
+   text-align: left;
+   padding-left: 1.2rem;
+   margin-bottom: 1.5rem;
+ }
+
+ .intro-card li {
+    margin-bottom: 0.5rem;
+  }
+
+ .intro-card button {
+   background: #2f7d32;
+   color: white;
+   border: none;
+   padding: 0.8rem 1.5rem;
+   border-radius: 999px;
+   font-size: 1rem;
+   cursor: pointer;
+  }
+
 
   /* Contenedor de dos columnas de botones */
   .buttons-container {
@@ -494,6 +538,20 @@
 
 <!-- Indicador de superficie -->
 <div id="surfaceIndicator"></div>
+
+<div id="introOverlay" class="intro-overlay">
+  <div class="intro-card">
+    <h2>Cómo usar la experiencia</h2>
+    <ul>
+      <li>🔄 Arrastra para rotar el animal</li>
+      <li>🔍 Usa la rueda o pellizca para hacer zoom</li>
+      <li>📱 Pulsa “AR” para ver el animal en tu espacio</li>
+      <li>🎧 Activa el audio para escuchar información</li>
+    </ul>
+
+    <button id="startBtn">Comenzar</button>
+  </div>
+</div>
 
 <!-- ESCENA -->
 <a-scene 
@@ -1313,6 +1371,14 @@
     // Inicializar información
     mostrarAnimal();
   });
+  
+  const introOverlay = document.getElementById('introOverlay');
+  const startBtn = document.getElementById('startBtn');
+
+  startBtn.addEventListener('click', () => {
+   introOverlay.style.display = 'none';
+  });
+
 </script>
 
 </body>
