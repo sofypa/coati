@@ -96,50 +96,6 @@
 
   pointer-events: auto;
 }
- .intro-overlay {
-   position: fixed;
-   inset: 0;
-   background: rgba(0, 0, 0, 0.85);
-   display: flex;
-   align-items: center;
-   justify-content: center;
-   z-index: 9999;
- }
-
- .intro-card {
-   background: #ffffff;
-   color: #000;
-   padding: 1.5rem;
-   border-radius: 16px;
-   max-width: 340px;
-   width: 90%;
-   text-align: center;
- }
-
- .intro-card h2 {
-   margin-bottom: 1rem;
- }
-
- .intro-card ul {
-   text-align: left;
-   padding-left: 1.2rem;
-   margin-bottom: 1.5rem;
- }
-
- .intro-card li {
-    margin-bottom: 0.5rem;
-  }
-
- .intro-card button {
-   background: #2f7d32;
-   color: white;
-   border: none;
-   padding: 0.8rem 1.5rem;
-   border-radius: 999px;
-   font-size: 1rem;
-   cursor: pointer;
-  }
-
 
   /* Contenedor de dos columnas de botones */
   .buttons-container {
@@ -243,6 +199,63 @@
     font-size: 11px;
     color: #666;
     line-height: 1.4;
+  }
+
+  /* Notificación inicial de instrucciones */
+  #notificacionInicial {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    padding: 25px 30px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    z-index: 10000;
+    max-width: 90%;
+    width: 400px;
+    text-align: center;
+  }
+
+  #notificacionInicial h3 {
+    margin: 0 0 15px 0;
+    color: #034732;
+    font-size: 20px;
+  }
+
+  #notificacionInicial p {
+    margin: 10px 0;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  #btnEntendido {
+    margin-top: 20px;
+    padding: 12px 30px;
+    background: #469352;
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+
+  #btnEntendido:hover {
+    background: #357a3d;
+  }
+
+  /* Overlay oscuro detrás de la notificación */
+  #overlayInicial {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
   }
 
   #audioPanel {
@@ -536,22 +549,20 @@
 
 <body>
 
+<!-- Overlay de la notificación inicial -->
+<div id="overlayInicial"></div>
+
+<!-- Notificación inicial de instrucciones -->
+<div id="notificacionInicial">
+  <h3>📱 Instrucciones de Navegación</h3>
+  <p><strong>PC:</strong> WASD: Mover | Arrastrar: Rotar | Rueda: Zoom</p>
+  <p><strong>Móvil:</strong> Deslizar: Rotar | Pinch: Zoom</p>
+  <p><strong>AR:</strong> Detección de superficies y colocación táctil</p>
+  <button id="btnEntendido" onclick="cerrarNotificacionInicial()">Entendido</button>
+</div>
+
 <!-- Indicador de superficie -->
 <div id="surfaceIndicator"></div>
-
-<div id="introOverlay" class="intro-overlay">
-  <div class="intro-card">
-    <h2>Cómo usar la experiencia</h2>
-    <ul>
-      <li>🔄 Arrastra para rotar el animal</li>
-      <li>🔍 Usa la rueda o pellizca para hacer zoom</li>
-      <li>📱 Pulsa “AR” para ver el animal en tu espacio</li>
-      <li>🎧 Activa el audio para escuchar información</li>
-    </ul>
-
-    <button id="startBtn">Comenzar</button>
-  </div>
-</div>
 
 <!-- ESCENA -->
 <a-scene 
@@ -735,6 +746,17 @@
   let reticleVisible = false;
   let lastHitPose = null;
 
+
+  // ========================================
+  // NOTIFICACIÓN INICIAL
+  // ========================================
+  function cerrarNotificacionInicial() {
+    const notificacion = document.getElementById('notificacionInicial');
+    const overlay = document.getElementById('overlayInicial');
+    
+    if (notificacion) notificacion.style.display = 'none';
+    if (overlay) overlay.style.display = 'none';
+  }
   // ========================================
   // CONTROL DE ROTACIÓN Y ZOOM (MODO NORMAL)
   // ========================================
@@ -1371,14 +1393,6 @@
     // Inicializar información
     mostrarAnimal();
   });
-  
-  const introOverlay = document.getElementById('introOverlay');
-  const startBtn = document.getElementById('startBtn');
-
-  startBtn.addEventListener('click', () => {
-   introOverlay.style.display = 'none';
-  });
-
 </script>
 
 </body>
