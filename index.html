@@ -556,8 +556,8 @@
 <div id="notificacionInicial">
   <h3>📱 Instrucciones de Navegación</h3>
   <p><strong>PC:</strong> WASD: Mover | Arrastrar: Rotar | Rueda: Zoom</p>
-  <p><strong>Móvil:</strong> Deslizar: Rotar | Pinch: Zoom</p>
-  <p><strong>AR:</strong> Detección de superficies y colocación táctil</p>
+  <p><strong>Móvil:</strong> Deslizar: Rotar | Pellizcar: Zoom</p>
+  <p><strong>AR:</strong> Detección de superficies y colocación táctil. Tras colocar: desliza para rotar, pellizca para escalar</p>
   <button id="btnEntendido" onclick="cerrarNotificacionInicial()">Entendido</button>
 </div>
 
@@ -625,7 +625,7 @@
     <ul style="text-align: left; color: #666;">
       <li>📱 Apunta tu cámara al suelo</li>
       <li>👆 Toca donde quieras colocar el modelo</li>
-      <li>🔄 Mueve tu cámara para verlo desde todos los ángulos</li>
+      <li>🔄 Tras colocar: desliza para rotar, pellizca para escalar</li>
     </ul>
     <p style="font-size: 12px; color: #999;">
       <strong>Requisitos:</strong> Android con ARCore (Chrome/Edge)
@@ -1209,8 +1209,58 @@
   // ========================================
   // COLOCACIÓN DEL MODELO EN AR
   // ========================================
+
+  // Variables para gestos táctiles en AR
+  let arDragging = false;
+  let arLastX = 0;
+  let arModelRotationY = 0;
+  let arLastPinchDistance = 0;
+  let arCurrentScale = 1.5;
+  const AR_SCALE_MIN = 0.3;
+  const AR_SCALE_MAX = 6;
+
+  window.addEventListener('touchstart', (e) => {
+    if (!modoAR) return;
+    if (!modeloColocado) return;
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+    if (e.touches.length === 1) {
+      arDragging = true;
+      arLastX = e.touches[0].clientX;
+    } else if (e.touches.length === 2) {
+      arDragging = false;
+      const t1 = e.touches[0], t2 = e.touches[1];
+      arLastPinchDistance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!modoAR) return;
+    if (!modeloColocado) return;
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+    const modelo = document.querySelector('#modelo');
+
+    if (e.touches.length === 1 && arDragging) {
+      const delta = e.touches[0].clientX - arLastX;
+      arLastX = e.touches[0].clientX;
+      arModelRotationY += delta * 0.5;
+      modelo.setAttribute('rotation', `0 ${arModelRotationY} 0`);
+    } else if (e.touches.length === 2) {
+      e.preventDefault();
+      const t1 = e.touches[0], t2 = e.touches[1];
+      const distance = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const scaleDelta = (distance - arLastPinchDistance) * 0.005;
+      arCurrentScale = Math.min(Math.max(arCurrentScale + scaleDelta, AR_SCALE_MIN), AR_SCALE_MAX);
+      modelo.setAttribute('scale', `${arCurrentScale} ${arCurrentScale} ${arCurrentScale}`);
+      arLastPinchDistance = distance;
+    }
+  }, { passive: false });
+
   window.addEventListener('touchend', (e) => {
     if (!modoAR) return;
+    arDragging = false;
+
     if (modeloColocado) return;
     
     // Permitir toques solo si NO son en botones o elementos interactivos
@@ -1240,6 +1290,10 @@
       y: pose.transform.position.y,
       z: pose.transform.position.z
     });
+    
+    // Resetear rotación del modelo al colocar
+    arModelRotationY = 0;
+    modelo.setAttribute('rotation', '0 0 0');
     
     // Hacer visible el modelo
     modelo.setAttribute('visible', true);
